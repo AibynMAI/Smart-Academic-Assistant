@@ -1,0 +1,15 @@
+[
+    {
+        "name": "Alex",
+        "student_id": "S101",
+        "subjects": {
+            "Math": [
+                90,
+                85
+            ],
+            "Science": [
+                78
+            ]
+        }
+    }
+]
