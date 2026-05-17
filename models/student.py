@@ -1,13 +1,9 @@
-
-from decorators.logger import log_action
-
 class Student:
     def __init__(self, name, student_id):
         self.name = name
         self.student_id = student_id
         self.subjects = {}
 
-    @log_action
     def add_grade(self, subject, grade):
         if subject not in self.subjects:
             self.subjects[subject] = []

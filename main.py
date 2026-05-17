@@ -1,94 +1,115 @@
-
-from analysis.analyzer import analyze_performance, get_weak_subject
 from models.student import Student
 from utils.file_handler import save_students, load_students
+from analysis.analyzer import analyze_student, analyze_all_students
+
+DATA_FILE = "data/students.json"
+
+# Загружаем студентов из файла при старте
+def load_all():
+    data = load_students(DATA_FILE)
+    students = []
+    for item in data:
+        s = Student(name=item["name"], student_id=item["student_id"])
+        s.subjects = item.get("subjects", {})
+        students.append(s)
+    return students
 
 
-students = []
+def save_all(students):
+    save_students(students, DATA_FILE)
 
 
-while True:
-    print("\n===== SMART ACADEMIC ASSISTANT =====")
-    print("1. Add Student")
-    print("2. Add Grade")
-    print("3. View Students")
-    print("4. Save Data")
-    print("5. Load Data")
-    print("6. Exit")
+def show_menu():
+    print("\n" + "=" * 40)
+    print("   SMART ACADEMIC ASSISTANT")
+    print("=" * 40)
+    print("1. Добавить студента")
+    print("2. Добавить оценку")
+    print("3. Показать студента")
+    print("4. Показать всех студентов")
+    print("5. Анализ студента")
+    print("6. Статистика группы")
+    print("0. Выход")
+    print("=" * 40)
 
-    choice = input("Enter your choice: ")
 
-    # ADD STUDENT
-    if choice == "1":
-        name = input("Enter student name: ")
-        student_id = input("Enter student ID: ")
+def find_student(students, student_id):
+    for s in students:
+        if s.student_id == student_id:
+            return s
+    return None
 
-        student = Student(name, student_id)
-        students.append(student)
 
-        print("Student added successfully!")
+def main():
+    students = load_all()
+    print(f"Загружено студентов: {len(students)}")
 
-    # ADD GRADE
-    elif choice == "2":
-        student_id = input("Enter student ID: ")
+    while True:
+        show_menu()
+        choice = input("Выберите действие: ").strip()
 
-        found = False
+        if choice == "1":
+            name = input("Имя студента: ").strip()
+            sid = input("ID студента: ").strip()
+            if find_student(students, sid):
+                print(f"Студент с ID '{sid}' уже существует!")
+            else:
+                s = Student(name=name, student_id=sid)
+                students.append(s)
+                save_all(students)
+                print(f"Студент '{name}' добавлен!")
 
-        for student in students:
-            if student.student_id == student_id:
+        elif choice == "2":
+            sid = input("ID студента: ").strip()
+            s = find_student(students, sid)
+            if not s:
+                print("Студент не найден!")
+            else:
+                subject = input("Предмет: ").strip()
+                try:
+                    grade = float(input("Оценка (0-100): "))
+                    if 0 <= grade <= 100:
+                        s.add_grade(subject=subject, grade=grade)
+                        save_all(students)
+                        print(f"Оценка {grade} по '{subject}' добавлена!")
+                    else:
+                        print("Оценка должна быть от 0 до 100!")
+                except ValueError:
+                    print("Введите число!")
 
-                subject = input("Enter subject: ")
-                grade = int(input("Enter grade: "))
+        elif choice == "3":
+            sid = input("ID студента: ").strip()
+            s = find_student(students, sid)
+            if not s:
+                print("Студент не найден!")
+            else:
+                s.display_info()
 
-                student.add_grade(subject, grade)
+        elif choice == "4":
+            if not students:
+                print("Список студентов пуст.")
+            else:
+                for s in students:
+                    print(f"  {s.name} (ID: {s.student_id}) | Среднее: {s.calculate_average()}")
 
-                print("Grade added successfully!")
+        elif choice == "5":
+            sid = input("ID студента: ").strip()
+            s = find_student(students, sid)
+            if not s:
+                print("Студент не найден!")
+            else:
+                analyze_student(s)
 
-                found = True
-                break
+        elif choice == "6":
+            analyze_all_students(students)
 
-        if not found:
-            print("Student not found!")
-
-    # VIEW STUDENTS
-    elif choice == "3":
-
-        if len(students) == 0:
-            print("No students available!")
+        elif choice == "0":
+            print("До свидания!")
+            break
 
         else:
-            for student in students:
+            print("Неверный выбор!")
 
-                student.display_info()
 
-                recommendation = analyze_performance(student)
-
-                weak_subject = get_weak_subject(student)
-
-                print(f"Recommendation: {recommendation}")
-
-                if weak_subject:
-                    print(f"Weak Subject: {weak_subject}")
-
-    # SAVE DATA
-    elif choice == "4":
-        save_students(students, "data/students.json")
-        print("Data saved successfully!")
-
-    # LOAD DATA
-    elif choice == "5":
-
-        loaded_data = load_students("data/students.json")
-
-        print("\n===== LOADED DATA =====")
-
-        for student in loaded_data:
-            print(student)
-
-    # EXIT
-    elif choice == "6":
-        print("Program closed.")
-        break
-
-    else:
-        print("Invalid choice!")
+if __name__ == "__main__":
+    main()
