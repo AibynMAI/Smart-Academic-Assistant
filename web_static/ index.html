@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Smart Academic Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:       #0a0a0f;
+    --surface:  #13131a;
+    --card:     #1a1a24;
+    --border:   #2a2a3a;
+    --accent:   #6c63ff;
+    --accent2:  #ff6584;
+    --green:    #43e97b;
+    --yellow:   #f9ca24;
+    --orange:   #f0932b;
+    --red:      #eb4d4b;
+    --text:     #e8e8f0;
+    --muted:    #6b6b8a;
+    --font-h:   'Syne', sans-serif;
+    --font-m:   'Space Mono', monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-m);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── noise overlay ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 9999; opacity: .4;
+  }
+
+  /* ── layout ── */
+  .shell { display: flex; min-height: 100vh; }
+
+  /* ── sidebar ── */
+  .sidebar {
+    width: 260px; flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 2rem 1.5rem;
+    position: sticky; top: 0; height: 100vh;
+  }
+  .logo {
+    font-family: var(--font-h);
+    font-size: 1.1rem; font-weight: 800;
+    letter-spacing: -.02em;
+    line-height: 1.2;
+    margin-bottom: 2.5rem;
+  }
+  .logo span { color: var(--accent); }
+  .logo small { display: block; font-size: .65rem; color: var(--muted); font-weight: 400; margin-top: .2rem; }
+
+  nav { display: flex; flex-direction: column; gap: .3rem; flex: 1; }
+  .nav-item {
+    display: flex; align-items: center; gap: .75rem;
+    padding: .6rem .9rem; border-radius: 8px;
+    cursor: pointer; font-size: .78rem;
+    color: var(--muted); transition: all .2s;
+    border: 1px solid transparent;
+  }
+  .nav-item:hover { color: var(--text); background: var(--card); }
+  .nav-item.active { color: var(--accent); background: rgba(108,99,255,.12); border-color: rgba(108,99,255,.25); }
+  .nav-icon { font-size: 1rem; width: 20px; text-align: center; }
+
+  .tg-btn {
+    margin-top: auto;
+    display: flex; align-items: center; gap: .75rem;
+    padding: .75rem 1rem; border-radius: 10px;
+    background: linear-gradient(135deg, #0088cc, #0055a5);
+    color: #fff; font-size: .78rem; font-weight: 700;
+    cursor: pointer; text-decoration: none;
+    transition: transform .2s, box-shadow .2s;
+    border: none;
+  }
+  .tg-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,136,204,.35); }
+
+  /* ── main ── */
+  .main { flex: 1; padding: 2.5rem; overflow-y: auto; }
+
+  /* ── header ── */
+  .page-header { margin-bottom: 2rem; }
+  .page-header h1 { font-family: var(--font-h); font-size: 1.8rem; font-weight: 800; }
+  .page-header p  { color: var(--muted); font-size: .78rem; margin-top: .3rem; }
+
+  /* ── stat cards ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.25rem;
+    position: relative; overflow: hidden;
+    transition: transform .2s;
+  }
+  .stat-card:hover { transform: translateY(-3px); }
+  .stat-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--accent-c, var(--accent));
+  }
+  .stat-card .val { font-family: var(--font-h); font-size: 2rem; font-weight: 800; }
+  .stat-card .lbl { font-size: .68rem; color: var(--muted); margin-top: .3rem; text-transform: uppercase; letter-spacing: .08em; }
+
+  /* ── sections ── */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* ── cards ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px; padding: 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+  .card-title {
+    font-family: var(--font-h); font-size: 1rem; font-weight: 700;
+    margin-bottom: 1.25rem; display: flex; align-items: center; gap: .5rem;
+  }
+
+  /* ── student list ── */
+  .student-row {
+    display: flex; align-items: center; gap: 1rem;
+    padding: .85rem 1rem; border-radius: 10px;
+    background: var(--surface); margin-bottom: .5rem;
+    border: 1px solid var(--border); transition: border-color .2s;
+    cursor: pointer;
+  }
+  .student-row:hover { border-color: var(--accent); }
+  .avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-h); font-weight: 800; font-size: .9rem; flex-shrink: 0;
+  }
+  .student-info { flex: 1; min-width: 0; }
+  .student-name { font-size: .88rem; font-weight: 700; }
+  .student-id   { font-size: .7rem; color: var(--muted); }
+  .avg-badge {
+    font-size: .75rem; font-weight: 700;
+    padding: .25rem .65rem; border-radius: 20px;
+    background: rgba(108,99,255,.15); color: var(--accent);
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── forms ── */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .form-group { display: flex; flex-direction: column; gap: .4rem; }
+  .form-group.full { grid-column: 1/-1; }
+  label { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  input, select {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); border-radius: 8px; padding: .65rem .9rem;
+    font-family: var(--font-m); font-size: .82rem;
+    transition: border-color .2s; outline: none;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  .btn {
+    padding: .7rem 1.5rem; border-radius: 8px; border: none;
+    font-family: var(--font-m); font-size: .8rem; font-weight: 700;
+    cursor: pointer; transition: all .2s; letter-spacing: .04em;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #5a52e0; transform: translateY(-1px); }
+  .btn-danger  { background: rgba(235,77,75,.15); color: var(--red); border: 1px solid rgba(235,77,75,.3); }
+  .btn-danger:hover  { background: rgba(235,77,75,.25); }
+
+  /* ── subject chips ── */
+  .subjects-wrap { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
+  .subj-chip {
+    padding: .35rem .85rem; border-radius: 20px; font-size: .72rem;
+    border: 1px solid var(--border); background: var(--surface);
+    display: flex; align-items: center; gap: .4rem;
+  }
+  .subj-chip .subj-avg { font-weight: 700; }
+
+  /* ── progress bar ── */
+  .prog-wrap { margin-top: .5rem; }
+  .prog-bar-bg { background: var(--surface); border-radius: 4px; height: 6px; overflow: hidden; }
+  .prog-bar    { height: 100%; border-radius: 4px; transition: width .6s ease; }
+
+  /* ── advice box ── */
+  .advice-box {
+    background: linear-gradient(135deg, rgba(108,99,255,.08), rgba(255,101,132,.06));
+    border: 1px solid rgba(108,99,255,.25);
+    border-radius: 12px; padding: 1.25rem;
+    font-size: .8rem; line-height: 1.7; white-space: pre-line;
+  }
+
+  /* ── modal ── */
+  .modal-bg {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.7); backdrop-filter: blur(4px);
+    z-index: 100; align-items: center; justify-content: center;
+  }
+  .modal-bg.open { display: flex; }
+  .modal {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 2rem; width: 90%; max-width: 520px;
+    animation: pop .25s ease;
+  }
+  @keyframes pop { from { transform: scale(.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .modal-title { font-family: var(--font-h); font-size: 1.1rem; font-weight: 800; margin-bottom: 1.25rem; }
+  .modal-close { float: right; cursor: pointer; color: var(--muted); font-size: 1.2rem; line-height: 1; }
+
+  /* ── toast ── */
+  .toast {
+    position: fixed; bottom: 2rem; right: 2rem;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: .85rem 1.25rem;
+    font-size: .8rem; z-index: 999;
+    transform: translateY(100px); opacity: 0;
+    transition: all .3s ease;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { border-color: var(--green); color: var(--green); }
+  .toast.error   { border-color: var(--red);   color: var(--red); }
+
+  /* ── empty state ── */
+  .empty { text-align: center; padding: 3rem; color: var(--muted); font-size: .85rem; }
+  .empty .e-icon { font-size: 2.5rem; margin-bottom: .75rem; }
+
+  /* ── responsive ── */
+  @media (max-width: 700px) {
+    .sidebar { display: none; }
+    .main { padding: 1.25rem; }
+    .form-grid { grid-template-columns: 1fr; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ══ SIDEBAR ══ -->
+  <aside class="sidebar">
+    <div class="logo">
+      Smart<span>Academic</span><br>Assistant
+      <small>SE-2504 · Beta v1.0</small>
+    </div>
+    <nav>
+      <div class="nav-item active" onclick="showSection('dashboard')">
+        <span class="nav-icon">📊</span> Dashboard
+      </div>
+      <div class="nav-item" onclick="showSection('students')">
+        <span class="nav-icon">👥</span> Students
+      </div>
+      <div class="nav-item" onclick="showSection('grades')">
+        <span class="nav-icon">📝</span> Add Grade
+      </div>
+      <div class="nav-item" onclick="showSection('advisor')">
+        <span class="nav-icon">🤖</span> Smart Advisor
+      </div>
+      <div class="nav-item" onclick="showSection('compare')">
+        <span class="nav-icon">⚖️</span> Compare
+      </div>
+      <div class="nav-item" onclick="showSection('atrisk')">
+        <span class="nav-icon">⚠️</span> At-Risk
+      </div>
+    </nav>
+    <a class="tg-btn" href="https://t.me/YourBotUsername" target="_blank">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-2.04 9.613c-.15.678-.54.843-1.094.524l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.08 14.9l-2.95-.924c-.64-.2-.655-.64.136-.948l11.527-4.445c.535-.194 1.003.13.769.665z"/></svg>
+      Open in Telegram
+    </a>
+  </aside>
+
+  <!-- ══ MAIN ══ -->
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <div id="sec-dashboard" class="section active">
+      <div class="page-header">
+        <h1>Dashboard</h1>
+        <p>Overview of all academic performance</p>
+      </div>
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card" style="--accent-c: var(--accent)">
+          <div class="val" id="s-total">—</div>
+          <div class="lbl">Total Students</div>
+        </div>
+        <div class="stat-card" style="--accent-c: var(--green)">
+          <div class="val" id="s-avg">—</div>
+          <div class="lbl">Group Average</div>
+        </div>
+        <div class="stat-card" style="--accent-c: var(--yellow)">
+          <div class="val" id="s-high">—</div>
+          <div class="lbl">Highest Avg</div>
+        </div>
+        <div class="stat-card" style="--accent-c: var(--red)">
+          <div class="val" id="s-risk">—</div>
+          <div class="lbl">At-Risk</div>
+        </div>
+        <div class="stat-card" style="--accent-c: var(--accent2)">
+          <div class="val" id="s-top">—</div>
+          <div class="lbl">Top Student</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🏅 All Students — Quick View</div>
+        <div id="dash-list"></div>
+      </div>
+    </div>
+
+    <!-- STUDENTS -->
+    <div id="sec-students" class="section">
+      <div class="page-header">
+        <h1>Students</h1>
+        <p>Manage student records</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">➕ Add New Student</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Full Name</label>
+            <input id="new-name" type="text" placeholder="e.g. Aibyn Mukhametsharip"/>
+          </div>
+          <div class="form-group">
+            <label>Student ID</label>
+            <input id="new-id" type="text" placeholder="e.g. SE2504-01"/>
+          </div>
+        </div>
+        <br/>
+        <button class="btn btn-primary" onclick="addStudent()">Add Student</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">👥 Student List</div>
+        <div id="student-list"></div>
+      </div>
+    </div>
+
+    <!-- GRADES -->
+    <div id="sec-grades" class="section">
+      <div class="page-header">
+        <h1>Add Grade</h1>
+        <p>Record a new grade for a student</p>
+      </div>
+      <div class="card">
+        <div class="card-title">📝 New Grade Entry</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Student</label>
+            <select id="grade-student"></select>
+          </div>
+          <div class="form-group">
+            <label>Subject</label>
+            <input id="grade-subject" type="text" placeholder="e.g. Mathematics"/>
+          </div>
+          <div class="form-group full">
+            <label>Grade (0 – 100)</label>
+            <input id="grade-value" type="number" min="0" max="100" placeholder="e.g. 87"/>
+          </div>
+        </div>
+        <br/>
+        <button class="btn btn-primary" onclick="addGrade()">Save Grade</button>
+      </div>
+    </div>
+
+    <!-- ADVISOR -->
+    <div id="sec-advisor" class="section">
+      <div class="page-header">
+        <h1>Smart Advisor</h1>
+        <p>Personalised study recommendations</p>
+      </div>
+      <div class="card">
+        <div class="card-title">🤖 Select Student</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Student</label>
+            <select id="adv-student"></select>
+          </div>
+        </div>
+        <br/>
+        <button class="btn btn-primary" onclick="runAdvice()">Generate Advice</button>
+      </div>
+      <div class="card" id="adv-result" style="display:none">
+        <div class="card-title">📋 Personalised Report</div>
+        <div class="advice-box" id="adv-text"></div>
+      </div>
+    </div>
+
+    <!-- COMPARE -->
+    <div id="sec-compare" class="section">
+      <div class="page-header">
+        <h1>Compare Students</h1>
+        <p>Head-to-head performance breakdown</p>
+      </div>
+      <div class="card">
+        <div class="card-title">⚖️ Select Two Students</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Student A</label>
+            <select id="cmp-a"></select>
+          </div>
+          <div class="form-group">
+            <label>Student B</label>
+            <select id="cmp-b"></select>
+          </div>
+        </div>
+        <br/>
+        <button class="btn btn-primary" onclick="runCompare()">Compare</button>
+      </div>
+      <div id="cmp-result"></div>
+    </div>
+
+    <!-- AT-RISK -->
+    <div id="sec-atrisk" class="section">
+      <div class="page-header">
+        <h1>At-Risk Students</h1>
+        <p>Students with average below 50</p>
+      </div>
+      <div id="risk-list"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- STUDENT DETAIL MODAL -->
+<div class="modal-bg" id="modal-bg" onclick="closeModal(event)">
+  <div class="modal">
+    <span class="modal-close" onclick="closeModalDirect()">✕</span>
+    <div class="modal-title" id="modal-title">Student Profile</div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════
+//  UTILS
+// ════════════════════════════════════════
+const $ = id => document.getElementById(id);
+
+function toast(msg, type = 'success') {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.className = 'toast', 2800);
+}
+
+function avgColor(a) {
+  if (a >= 85) return 'var(--green)';
+  if (a >= 70) return 'var(--yellow)';
+  if (a >= 50) return 'var(--orange)';
+  return 'var(--red)';
+}
+
+function letter(a) {
+  if (a >= 90) return 'A+';
+  if (a >= 85) return 'A';
+  if (a >= 80) return 'A-';
+  if (a >= 75) return 'B+';
+  if (a >= 70) return 'B';
+  if (a >= 65) return 'B-';
+  if (a >= 60) return 'C+';
+  if (a >= 55) return 'C';
+  if (a >= 50) return 'C-';
+  return 'F';
+}
+
+function subAvg(grades) {
+  if (!grades.length) return 0;
+  return Math.round(grades.reduce((a,b)=>a+b,0)/grades.length * 100)/100;
+}
+
+function overallAvg(subjects) {
+  let total = 0, count = 0;
+  Object.values(subjects).forEach(g => { total += g.reduce((a,b)=>a+b,0); count += g.length; });
+  return count ? Math.round(total/count*100)/100 : 0;
+}
+
+function trend(grades) {
+  if (grades.length < 2) return '';
+  const h = Math.floor(grades.length/2);
+  const a = grades.slice(0,h).reduce((a,b)=>a+b,0)/h;
+  const b = grades.slice(h).reduce((a,b)=>a+b,0)/(grades.length-h);
+  if (b - a > 5)  return ' 📈';
+  if (a - b > 5)  return ' 📉';
+  return ' ➡️';
+}
+
+function initials(name) {
+  return name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+}
+
+// ════════════════════════════════════════
+//  NAV
+// ════════════════════════════════════════
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  $(`sec-${id}`).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (id === 'grades' || id === 'advisor') populateSelects();
+  if (id === 'compare') populateCmpSelects();
+  if (id === 'atrisk')  renderAtRisk();
+  if (id === 'students') renderStudents();
+}
+
+// ════════════════════════════════════════
+//  API
+// ════════════════════════════════════════
+async function api(url, method='GET', body=null) {
+  const opts = { method, headers: {'Content-Type':'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(url, opts);
+  return r.json();
+}
+
+// ════════════════════════════════════════
+//  LOAD DATA
+// ════════════════════════════════════════
+let students = [];
+
+async function loadAll() {
+  students = await api('/api/students');
+  renderDashboard();
+  renderStudents();
+}
+
+// ════════════════════════════════════════
+//  DASHBOARD
+// ════════════════════════════════════════
+async function renderDashboard() {
+  const stats = await api('/api/stats');
+  if (stats.total) {
+    $('s-total').textContent = stats.total;
+    $('s-avg').textContent   = stats.group_avg;
+    $('s-high').textContent  = stats.highest;
+    $('s-risk').textContent  = stats.at_risk;
+    $('s-top').textContent   = stats.top_name.split(' ')[0];
+  }
+
+  const list = $('dash-list');
+  if (!students.length) {
+    list.innerHTML = '<div class="empty"><div class="e-icon">📭</div>No students yet. Add some!</div>';
+    return;
+  }
+  list.innerHTML = students.map(s => {
+    const avg = overallAvg(s.subjects);
+    const col = avgColor(avg);
+    return `
+      <div class="student-row" onclick="openModal('${s.student_id}')">
+        <div class="avatar">${initials(s.name)}</div>
+        <div class="student-info">
+          <div class="student-name">${s.name}</div>
+          <div class="student-id">${s.student_id}</div>
+        </div>
+        <div class="dot" style="background:${col}"></div>
+        <div class="avg-badge" style="color:${col};background:${col}22">${avg} <small>${letter(avg)}</small></div>
+      </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════
+//  STUDENTS
+// ════════════════════════════════════════
+function renderStudents() {
+  const list = $('student-list');
+  if (!students.length) {
+    list.innerHTML = '<div class="empty"><div class="e-icon">👥</div>No students yet.</div>';
+    return;
+  }
+  list.innerHTML = students.map(s => {
+    const avg = overallAvg(s.subjects);
+    const col = avgColor(avg);
+    return `
+      <div class="student-row">
+        <div class="avatar">${initials(s.name)}</div>
+        <div class="student-info">
+          <div class="student-name">${s.name}</div>
+          <div class="student-id">${s.student_id} · ${Object.keys(s.subjects).length} subjects</div>
+        </div>
+        <div class="avg-badge" style="color:${col};background:${col}22">${avg}</div>
+        <button class="btn btn-danger" style="padding:.4rem .8rem;font-size:.7rem" onclick="deleteStudent('${s.student_id}','${s.name}')">🗑</button>
+      </div>`;
+  }).join('');
+}
+
+async function addStudent() {
+  const name = $('new-name').value.trim();
+  const sid  = $('new-id').value.trim();
+  if (!name || !sid) return toast('Fill in all fields!', 'error');
+  const r = await api('/api/students', 'POST', {name, student_id: sid});
+  if (r.error) return toast(r.error, 'error');
+  toast(`✅ ${name} added!`);
+  $('new-name').value = ''; $('new-id').value = '';
+  await loadAll();
+}
+
+async function deleteStudent(sid, name) {
+  if (!confirm(`Delete ${name}?`)) return;
+  await api(`/api/students/${sid}`, 'DELETE');
+  toast(`🗑 ${name} deleted`);
+  await loadAll();
+}
+
+// ════════════════════════════════════════
+//  SELECTS
+// ════════════════════════════════════════
+function populateSelects() {
+  const opts = students.map(s => `<option value="${s.student_id}">${s.name}</option>`).join('');
+  $('grade-student').innerHTML = opts || '<option>No students</option>';
+  $('adv-student').innerHTML   = opts || '<option>No students</option>';
+}
+function populateCmpSelects() {
+  const opts = students.map(s => `<option value="${s.student_id}">${s.name}</option>`).join('');
+  $('cmp-a').innerHTML = opts || '<option>No students</option>';
+  $('cmp-b').innerHTML = opts || '<option>No students</option>';
+}
+
+// ════════════════════════════════════════
+//  GRADES
+// ════════════════════════════════════════
+async function addGrade() {
+  const sid     = $('grade-student').value;
+  const subject = $('grade-subject').value.trim();
+  const grade   = parseFloat($('grade-value').value);
+  if (!subject || isNaN(grade) || grade < 0 || grade > 100) return toast('Check your input!', 'error');
+  const r = await api('/api/grades', 'POST', {student_id: sid, subject, grade});
+  if (r.error) return toast(r.error, 'error');
+  toast(`✅ Grade saved! New avg: ${r.new_avg}`);
+  $('grade-subject').value = ''; $('grade-value').value = '';
+  await loadAll();
+}
+
+// ════════════════════════════════════════
+//  SMART ADVISOR (client-side, no API)
+// ════════════════════════════════════════
+const TIPS = {
+  math:    ["Practice problems daily — even 10/day is huge 📐","Focus on understanding formulas, not just memorizing","Use YouTube tutorials for step-by-step explanations 🎥"],
+  physics: ["Draw diagrams for every problem 📌","Connect theory to real-life examples 🌍","Re-derive formulas yourself to understand them ⚙️"],
+  chem:    ["Make flashcards for elements and reactions 🃏","Do practice reactions daily 🧪","Group similar reactions when studying 📋"],
+  english: ["Read 15 minutes in English every day 📖","Write a short paragraph daily ✍️","Watch shows with English subtitles 🎬"],
+  history: ["Create timelines on paper 📅","Tell the story out loud like you're teaching 🗣️","Link events to causes and effects, not just dates 🔗"],
+  cs:      ["Code every day — even 30 min is enough 💻","Build small projects to apply what you learn 🛠️","Debug old code to learn from mistakes 🐛"],
+  default: ["Review notes within 24h of the lecture 📝","Pomodoro: 25 min study → 5 min break ⏱️","Teach the topic to a friend 👥"]
+};
+
+function getTips(subj) {
+  const n = subj.toLowerCase();
+  if (/math|calc|algebra/.test(n)) return TIPS.math;
+  if (/phys/.test(n)) return TIPS.physics;
+  if (/chem/.test(n)) return TIPS.chem;
+  if (/eng|writ|lang/.test(n)) return TIPS.english;
+  if (/hist|social/.test(n)) return TIPS.history;
+  if (/cs|prog|python|code|comp/.test(n)) return TIPS.cs;
+  return TIPS.default;
+}
+
+function buildAdvice(s) {
+  const avg = overallAvg(s.subjects);
+  const subjs = Object.keys(s.subjects);
+  const weak   = subjs.length ? subjs.reduce((a,b) => subAvg(s.subjects[a]) < subAvg(s.subjects[b]) ? a : b) : null;
+  const strong = subjs.length ? subjs.reduce((a,b) => subAvg(s.subjects[a]) > subAvg(s.subjects[b]) ? a : b) : null;
+
+  let out = `🤖 Smart Advisor — ${s.name}\n${'─'.repeat(32)}\n\n`;
+
+  if (avg >= 85)      out += `🌟 EXCELLENT performance (${avg})\nYou're at the top — here's how to stay there:\n\n`;
+  else if (avg >= 70) out += `👍 GOOD performance (${avg})\nSolid work — let's push it higher:\n\n`;
+  else if (avg >= 50) out += `⚠️ AVERAGE performance (${avg})\nYou can do better — here's the plan:\n\n`;
+  else                out += `🚨 AT RISK (${avg})\nImmediate action needed:\n\n`;
+
+  // Trend
+  const allGrades = Object.values(s.subjects).flat();
+  if (allGrades.length >= 4) {
+    const h = Math.floor(allGrades.length/2);
+    const early  = allGrades.slice(0,h).reduce((a,b)=>a+b,0)/h;
+    const recent = allGrades.slice(h).reduce((a,b)=>a+b,0)/(allGrades.length-h);
+    if (recent > early+3)      out += `📈 Trend: Your grades are IMPROVING! Great momentum.\n\n`;
+    else if (recent < early-3) out += `📉 Trend: Grades have been DECLINING lately — time to refocus.\n\n`;
+    else                       out += `➡️ Trend: Performance is stable.\n\n`;
+  }
+
+  // Weak subject
+  if (weak && subAvg(s.subjects[weak]) < 70) {
+    const wa = subAvg(s.subjects[weak]);
+    const tips = getTips(weak);
+    out += `🔴 Focus subject: ${weak} (avg ${wa})\n`;
+    tips.forEach(t => out += `  • ${t}\n`);
+    out += '\n';
+  }
+
+  // Strong subject
+  if (strong && subAvg(s.subjects[strong]) >= 70) {
+    out += `🟢 Strength: ${strong} (${subAvg(s.subjects[strong])}) — keep it up!\n\n`;
+  }
+
+  // General
+  out += `📌 General tips:\n`;
+  if (avg >= 85) {
+    out += `  • Tutor classmates — it deepens your own knowledge\n`;
+    out += `  • Start exam prep 2 weeks early\n`;
+    out += `  • Explore advanced topics in your best subject\n`;
+  } else if (avg >= 70) {
+    out += `  • Spend 30 extra min/day on your weak subject\n`;
+    out += `  • Review lecture notes the same day\n`;
+    out += `  • Form a study group with 2-3 classmates\n`;
+  } else if (avg >= 50) {
+    out += `  • Visit your teacher during office hours\n`;
+    out += `  • Create a strict daily study schedule\n`;
+    out += `  • Focus on one subject at a time\n`;
+  } else {
+    out += `  • Talk to your academic advisor immediately\n`;
+    out += `  • Attend every class without exception\n`;
+    out += `  • Study at least 3 hours daily\n`;
+    out += `  • Limit phone use during study time\n`;
+  }
+
+  return out;
+}
+
+function runAdvice() {
+  const sid = $('adv-student').value;
+  const s   = students.find(x => x.student_id === sid);
+  if (!s) return toast('Select a student first', 'error');
+  $('adv-text').textContent = buildAdvice(s);
+  $('adv-result').style.display = 'block';
+}
+
+// ════════════════════════════════════════
+//  COMPARE
+// ════════════════════════════════════════
+function runCompare() {
+  const s1 = students.find(x => x.student_id === $('cmp-a').value);
+  const s2 = students.find(x => x.student_id === $('cmp-b').value);
+  if (!s1 || !s2 || s1.student_id === s2.student_id)
+    return toast('Select two different students!', 'error');
+
+  const a1  = overallAvg(s1.subjects), a2 = overallAvg(s2.subjects);
+  const col1 = avgColor(a1), col2 = avgColor(a2);
+  const common = Object.keys(s1.subjects).filter(k => k in s2.subjects);
+
+  let html = `
+    <div class="card">
+      <div class="card-title">⚖️ ${s1.name} vs ${s2.name}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem">
+        <div style="text-align:center;padding:1rem;background:var(--surface);border-radius:10px">
+          <div style="font-size:2rem;font-family:var(--font-h);font-weight:800;color:${col1}">${a1}</div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:.3rem">${s1.name} · ${letter(a1)}</div>
+          <div class="prog-wrap"><div class="prog-bar-bg"><div class="prog-bar" style="width:${a1}%;background:${col1}"></div></div></div>
+        </div>
+        <div style="text-align:center;padding:1rem;background:var(--surface);border-radius:10px">
+          <div style="font-size:2rem;font-family:var(--font-h);font-weight:800;color:${col2}">${a2}</div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:.3rem">${s2.name} · ${letter(a2)}</div>
+          <div class="prog-wrap"><div class="prog-bar-bg"><div class="prog-bar" style="width:${a2}%;background:${col2}"></div></div></div>
+        </div>
+      </div>
+      <div style="text-align:center;padding:.75rem;background:rgba(108,99,255,.1);border-radius:8px;font-size:.82rem">
+        🏆 Better overall: <strong>${a1 > a2 ? s1.name : a2 > a1 ? s2.name : 'Tie!'}</strong>
+      </div>`;
+
+  if (common.length) {
+    html += `<div style="margin-top:1.25rem"><div style="font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.75rem">Head-to-head by subject</div>`;
+    common.forEach(subj => {
+      const sa1 = subAvg(s1.subjects[subj]), sa2 = subAvg(s2.subjects[subj]);
+      const w   = sa1 > sa2 ? s1.name : sa2 > sa1 ? s2.name : 'Tie';
+      html += `
+        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.6rem;font-size:.8rem">
+          <span style="flex:1;color:var(--muted)">${subj}</span>
+          <span style="color:${avgColor(sa1)};font-weight:700">${sa1}</span>
+          <span style="color:var(--border)">vs</span>
+          <span style="color:${avgColor(sa2)};font-weight:700">${sa2}</span>
+          <span style="color:var(--accent);font-size:.7rem">→ ${w}</span>
+        </div>`;
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+  $('cmp-result').innerHTML = html;
+}
+
+// ════════════════════════════════════════
+//  AT-RISK
+// ════════════════════════════════════════
+function renderAtRisk() {
+  const risk = students.filter(s => overallAvg(s.subjects) < 50);
+  const el   = $('risk-list');
+  if (!risk.length) {
+    el.innerHTML = '<div class="card"><div class="empty"><div class="e-icon">✅</div>No at-risk students! Everyone is above 50.</div></div>';
+    return;
+  }
+  el.innerHTML = risk.map(s => {
+    const avg  = overallAvg(s.subjects);
+    const subjs = Object.keys(s.subjects);
+    const weak  = subjs.length ? subjs.reduce((a,b) => subAvg(s.subjects[a]) < subAvg(s.subjects[b]) ? a : b) : '—';
+    return `
+      <div class="card" style="border-color:rgba(235,77,75,.35)">
+        <div style="display:flex;align-items:center;gap:1rem">
+          <div class="avatar" style="background:linear-gradient(135deg,var(--red),var(--orange))">${initials(s.name)}</div>
+          <div>
+            <div style="font-weight:700">${s.name}</div>
+            <div style="font-size:.72rem;color:var(--muted)">${s.student_id}</div>
+          </div>
+          <div style="margin-left:auto;font-size:1.5rem;font-family:var(--font-h);font-weight:800;color:var(--red)">${avg}</div>
+        </div>
+        <div style="margin-top:.75rem;font-size:.78rem;color:var(--muted)">
+          Weakest subject: <strong style="color:var(--orange)">${weak}${weak !== '—' ? ' ('+subAvg(s.subjects[weak])+')' : ''}</strong>
+        </div>
+        <div class="prog-wrap" style="margin-top:.5rem">
+          <div class="prog-bar-bg"><div class="prog-bar" style="width:${avg}%;background:var(--red)"></div></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════
+//  MODAL
+// ════════════════════════════════════════
+function openModal(sid) {
+  const s   = students.find(x => x.student_id === sid);
+  if (!s) return;
+  const avg  = overallAvg(s.subjects);
+  const subjs = Object.keys(s.subjects);
+  const weak  = subjs.length ? subjs.reduce((a,b)=>subAvg(s.subjects[a])<subAvg(s.subjects[b])?a:b) : null;
+  const strong= subjs.length ? subjs.reduce((a,b)=>subAvg(s.subjects[a])>subAvg(s.subjects[b])?a:b) : null;
+
+  $('modal-title').textContent = s.name;
+
+  let body = `
+    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.25rem">
+      <div class="avatar" style="width:52px;height:52px;font-size:1.1rem">${initials(s.name)}</div>
+      <div>
+        <div style="font-size:.78rem;color:var(--muted)">${s.student_id}</div>
+        <div style="font-size:1.6rem;font-family:var(--font-h);font-weight:800;color:${avgColor(avg)}">${avg} <small style="font-size:.9rem">${letter(avg)}</small></div>
+      </div>
+    </div>
+    <div class="prog-wrap" style="margin-bottom:1.25rem">
+      <div class="prog-bar-bg" style="height:8px"><div class="prog-bar" style="width:${avg}%;background:${avgColor(avg)}"></div></div>
+    </div>`;
+
+  if (subjs.length) {
+    body += '<div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.75rem">Subjects</div>';
+    subjs.forEach(subj => {
+      const sa = subAvg(s.subjects[subj]);
+      const tr = trend(s.subjects[subj]);
+      const tag = subj===weak ? '🔴' : subj===strong ? '🟢' : '';
+      body += `
+        <div style="margin-bottom:.85rem">
+          <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:.3rem">
+            <span>${tag} ${subj}${tr}</span>
+            <span style="color:${avgColor(sa)};font-weight:700">${sa} ${letter(sa)}</span>
+          </div>
+          <div class="prog-bar-bg"><div class="prog-bar" style="width:${sa}%;background:${avgColor(sa)}"></div></div>
+          <div style="font-size:.68rem;color:var(--muted);margin-top:.2rem">${s.subjects[subj].join(', ')}</div>
+        </div>`;
+    });
+  } else {
+    body += '<div style="color:var(--muted);font-size:.8rem">No grades yet.</div>';
+  }
+
+  $('modal-body').innerHTML = body;
+  $('modal-bg').classList.add('open');
+}
+
+function closeModal(e) { if (e.target === $('modal-bg')) $('modal-bg').classList.remove('open'); }
+function closeModalDirect() { $('modal-bg').classList.remove('open'); }
+
+// ════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════
+loadAll();
+</script>
+</body>
+</html>

@@ -1,28 +1,17 @@
 import json
+import os
 
 
-def save_students(students, filename):
-    data = []
-
-    for student in students:
-        student_data = {
-            "name": student.name,
-            "student_id": student.student_id,
-            "subjects": student.subjects
-        }
-
-        data.append(student_data)
-
-    with open(filename, "w") as file:
-        json.dump(data, file, indent=4)
+def save_students(students, filename: str) -> None:
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    data = [s.to_dict() for s in students]
+    with open(filename, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
 
 
-def load_students(filename):
+def load_students(filename: str) -> list[dict]:
     try:
-        with open(filename, "r") as file:
-            data = json.load(file)
-
-            return data
-
+        with open(filename, "r", encoding="utf-8") as f:
+            return json.load(f)
     except FileNotFoundError:
         return []

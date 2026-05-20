@@ -1,6 +1,10 @@
 from models.student import Student
 from utils.file_handler import save_students, load_students
-from analysis.analyzer import analyze_student, analyze_all_students
+from analysis.analyzer import (
+    analyze_performance,
+    get_weak_subject,
+    get_top_student
+)
 
 DATA_FILE = "data/students.json"
 

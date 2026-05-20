@@ -1,13 +1,13 @@
+import functools
+from datetime import datetime
+
+
 def log_action(func):
-
+    @functools.wraps(func)
     def wrapper(*args, **kwargs):
-
-        print(f"\n[LOG] Function '{func.__name__}' started.")
-
+        ts = datetime.now().strftime("%H:%M:%S")
+        print(f"[{ts}] ▶ {func.__name__}")
         result = func(*args, **kwargs)
-
-        print(f"[LOG] Function '{func.__name__}' finished.")
-
+        print(f"[{ts}] ✓ {func.__name__} done")
         return result
-
     return wrapper

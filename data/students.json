@@ -11,5 +11,60 @@
                 78
             ]
         }
+    },
+    {
+        "name": "Amir",
+        "student_id": "2504",
+        "subjects": {
+            "ITP": [
+                85.0,
+                100.0
+            ]
+        }
+    },
+    {
+        "name": "AIbyn",
+        "student_id": "ITp",
+        "subjects": {}
+    },
+    {
+        "name": "Amir",
+        "student_id": "2503",
+        "subjects": {
+            "ITP": [
+                95.0
+            ]
+        }
+    }
+]
+[
+    {
+        "name": "Aibyn Mukhametsharip",
+        "student_id": "SE2504-01",
+        "subjects": {
+            "Mathematics": [85, 90, 78, 92],
+            "Physics": [70, 65, 72, 68],
+            "Python": [95, 88, 91, 97],
+            "English": [75, 80, 77, 82]
+        }
+    },
+    {
+        "name": "Yasmin Srazhdin",
+        "student_id": "SE2504-02",
+        "subjects": {
+            "Mathematics": [92, 95, 88, 96],
+            "Physics": [85, 80, 88, 83],
+            "Python": [78, 82, 75, 80],
+            "English": [90, 93, 87, 91]
+        }
+    },
+    {
+        "name": "Test Student",
+        "student_id": "SE2504-03",
+        "subjects": {
+            "Mathematics": [45, 40, 38, 42],
+            "Physics": [35, 48, 41, 37],
+            "Python": [50, 45, 43, 48]
+        }
     }
 ]
